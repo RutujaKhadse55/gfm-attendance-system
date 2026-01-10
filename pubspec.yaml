@@ -1,0 +1,46 @@
+name: gfm_app
+description: GFM Attendance & Follow-Up Management System
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # Local Database
+  sqflite: ^2.3.0
+  # For desktop (Windows/Linux/Mac) sqlite support
+  sqflite_common_ffi: ^2.2.0
+  path_provider: ^2.1.1
+  path: ^1.8.3
+  
+  # State Management
+  provider: ^6.1.1
+  
+  # Excel Operations
+  excel: ^4.0.3
+  file_picker: ^8.0.0
+  csv: ^5.1.1
+  pdf: ^3.10.7
+  shared_preferences: ^2.2.2
+  
+  # Utilities
+  url_launcher: ^6.2.2
+  image_picker: ^1.0.5
+  share_plus: ^7.2.2
+  intl: ^0.18.1
+  http: ^1.1.0
+  permission_handler: ^11.4.0
+  
+  cupertino_icons: ^1.0.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
