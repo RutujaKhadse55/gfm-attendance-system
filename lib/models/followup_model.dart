@@ -1,79 +1,97 @@
-// lib/models/followup_model.dart
+// lib/models/follow_up_model.dart
 
 class FollowUp {
-  final String id;
-  final String studentId;
-  final String teacherId;
-   final String attendanceId;
-  final String notes;
-  final List<String> documentUrls;
-  final DateTime date;
-  final DateTime createdAt;
+  final int? id;
+  final int attendanceId;        // References attendance.id
+  final String reason;
+  final String? proofPath;
+  final String? proofFileId;     // Backend file ID
+  final int timestamp;
 
   FollowUp({
-    required this.id,
-    required this.studentId,
-    required this.teacherId,
-     required this.attendanceId,
-    required this.notes,
-    required this.documentUrls,
-    required this.date,
-    required this.createdAt,
+    this.id,
+    required this.attendanceId,
+    required this.reason,
+    this.proofPath,
+    this.proofFileId,
+    required this.timestamp,
   });
 
-  // MongoDB API
+  // ================= FROM/TO API (MongoDB) =================
+
   factory FollowUp.fromJson(Map<String, dynamic> json) {
     return FollowUp(
-      id: json['_id'] ?? json['id'],
-      studentId: json['studentId'],
-      teacherId: json['teacherId'],
-       attendanceId: json['attendanceId'],
-      notes: json['notes'],
-      documentUrls: List<String>.from(json['documentUrls'] ?? []),
-      date: DateTime.parse(json['date']),
-      createdAt: DateTime.parse(json['createdAt']),
+      id: json['id'] is int
+          ? json['id']
+          : int.tryParse(json['id']?.toString() ?? '0'),
+      attendanceId: json['attendanceId'] is int
+          ? json['attendanceId']
+          : int.tryParse(json['attendanceId']?.toString() ?? '0') ?? 0,
+      reason: json['reason'] ?? '',
+      proofPath: json['proofPath'],
+      proofFileId: json['proofFileId'],
+      timestamp: json['timestamp'] is int
+          ? json['timestamp']
+          : int.tryParse(json['timestamp']?.toString() ?? '0') ?? 0,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      '_id': id,
-      'studentId': studentId,
-      'teacherId': teacherId,
-       'attendanceId': attendanceId,
-      'notes': notes,
-      'documentUrls': documentUrls,
-      'date': date.toIso8601String(),
-      'createdAt': createdAt.toIso8601String(),
+      if (id != null) 'id': id,
+      'attendanceId': attendanceId,
+      'reason': reason,
+      if (proofPath != null) 'proofPath': proofPath,
+      if (proofFileId != null) 'proofFileId': proofFileId,
+      'timestamp': timestamp,
     };
   }
 
-  // SQLite
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'studentId': studentId,
-      'teacherId': teacherId,
-        'attendanceId': attendanceId,
-      'notes': notes,
-      'documentUrls': documentUrls.join(','), // store as comma-separated string
-      'date': date.toIso8601String(),
-      'createdAt': createdAt.toIso8601String(),
-    };
-  }
+  // ================= FROM/TO SQLite =================
 
   factory FollowUp.fromMap(Map<String, dynamic> map) {
     return FollowUp(
       id: map['id'],
-      studentId: map['studentId'],
-      teacherId: map['teacherId'],
-        attendanceId: map['attendanceId'],
-      notes: map['notes'],
-      documentUrls: map['documentUrls'] != null
-          ? (map['documentUrls'] as String).split(',')
-          : [],
-      date: DateTime.parse(map['date']),
-      createdAt: DateTime.parse(map['createdAt']),
+      attendanceId: map['attendance_id'] is int
+          ? map['attendance_id']
+          : int.tryParse(map['attendance_id']?.toString() ?? '0') ?? 0,
+      reason: map['reason'] ?? '',
+      proofPath: map['proof_path'],
+      proofFileId: map['proof_file_id'],
+      timestamp: map['timestamp'] is int
+          ? map['timestamp']
+          : int.tryParse(map['timestamp']?.toString() ?? '0') ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      if (id != null) 'id': id,
+      'attendance_id': attendanceId,
+      'reason': reason,
+      if (proofPath != null) 'proof_path': proofPath,
+      if (proofFileId != null) 'proof_file_id': proofFileId,
+      'timestamp': timestamp,
+    };
+  }
+
+  // ================= UTILITY =================
+
+  FollowUp copyWith({
+    int? id,
+    int? attendanceId,
+    String? reason,
+    String? proofPath,
+    String? proofFileId,
+    int? timestamp,
+  }) {
+    return FollowUp(
+      id: id ?? this.id,
+      attendanceId: attendanceId ?? this.attendanceId,
+      reason: reason ?? this.reason,
+      proofPath: proofPath ?? this.proofPath,
+      proofFileId: proofFileId ?? this.proofFileId,
+      timestamp: timestamp ?? this.timestamp,
     );
   }
 }

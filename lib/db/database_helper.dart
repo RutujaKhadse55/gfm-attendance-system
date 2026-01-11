@@ -1,3 +1,4 @@
+// lib/db/database_helper.dart
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:flutter/foundation.dart';
@@ -21,7 +22,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 5, // Updated version
+      version: 5,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -29,7 +30,6 @@ class DatabaseHelper {
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 3) {
-      // Migration: Add role column to assignments if needed
       await db.execute('''
         CREATE TABLE IF NOT EXISTS assignments_new (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -40,7 +40,6 @@ class DatabaseHelper {
         )
       ''');
       
-      // Copy existing data
       await db.execute('''
         INSERT INTO assignments_new (id, teacher_name, batch_id, role)
         SELECT id, teacher_name, batch_id, 'attendance_teacher' FROM assignments
@@ -51,17 +50,14 @@ class DatabaseHelper {
     }
     
     if (oldVersion < 4) {
-      // Migration: Add proof_path column to attendance table
       try {
         await db.execute('ALTER TABLE attendance ADD COLUMN proof_path TEXT');
       } catch (e) {
-        // Column might already exist
         debugPrint('Column proof_path already exists or migration failed: $e');
       }
     }
     
     if (oldVersion < 5) {
-      // Migration: Add proof_file_id column to follow_ups table for backend file IDs
       try {
         await db.execute('ALTER TABLE follow_ups ADD COLUMN proof_file_id TEXT');
       } catch (e) {
@@ -91,7 +87,7 @@ class DatabaseHelper {
       )
     ''');
 
-    // Assignments table - NOW with role column
+    // Assignments table
     await db.execute('''
       CREATE TABLE assignments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -224,7 +220,6 @@ class DatabaseHelper {
     return result.map((map) => models.Student.fromMap(map)).toList();
   }
 
-  // NEW: Get students for multiple batches (for attendance teacher)
   Future<List<models.Student>> getStudentsByBatches(List<int> batchIds) async {
     if (batchIds.isEmpty) return [];
     
@@ -263,14 +258,11 @@ class DatabaseHelper {
     }
   }
 
-  // NEW: Auto-create batches from student data
   Future<void> ensureBatchesExist(Set<int> batchIds) async {
     final db = await database;
     for (var batchId in batchIds) {
-      // Check if batch exists
       final existing = await db.query('batches', where: 'id = ?', whereArgs: [batchId]);
       if (existing.isEmpty) {
-        // Create batch with default name
         await db.insert('batches', {
           'id': batchId,
           'name': 'Batch $batchId',
@@ -297,7 +289,6 @@ class DatabaseHelper {
   Future<Map<String, dynamic>> insertAssignment(models.Assignment assignment) async {
     final db = await database;
     try {
-      // Verify batch exists unless this is the special "all batches" marker (-1)
       if (assignment.batchId != -1) {
         final batch = await getBatchById(assignment.batchId);
         if (batch == null) {
@@ -305,19 +296,36 @@ class DatabaseHelper {
         }
       }
 
-      // Verify user exists
       final user = await getUserByUsername(assignment.teacherName);
       if (user == null) {
         return {'success': false, 'message': 'Teacher does not exist'};
       }
 
-      // If assigning to all batches (-1), store -1 in batch_id to indicate global assignment
       final id = await db.insert('assignments', assignment.toMap());
       return {'success': true, 'id': id, 'message': 'Assignment created'};
     } on DatabaseException catch (e) {
       if (e.isUniqueConstraintError()) {
         return {'success': false, 'message': 'Teacher already assigned to this batch'};
       }
+      return {'success': false, 'message': 'Error: ${e.toString()}'};
+    }
+  }
+
+  Future<Map<String, dynamic>> deleteAssignment(int assignmentId) async {
+    final db = await database;
+    try {
+      final deleted = await db.delete(
+        'assignments',
+        where: 'id = ?',
+        whereArgs: [assignmentId],
+      );
+      
+      if (deleted > 0) {
+        return {'success': true, 'message': 'Assignment deleted successfully'};
+      } else {
+        return {'success': false, 'message': 'Assignment not found'};
+      }
+    } catch (e) {
       return {'success': false, 'message': 'Error: ${e.toString()}'};
     }
   }
@@ -332,7 +340,6 @@ class DatabaseHelper {
     return result.map((map) => models.Assignment.fromMap(map)).toList();
   }
 
-  // NEW: Get assignments by role
   Future<List<models.Assignment>> getAssignmentsByTeacherAndRole(
     String teacherName,
     String role,
@@ -367,8 +374,6 @@ class DatabaseHelper {
   Future<Map<String, dynamic>> markAttendance(models.Attendance attendance) async {
     final db = await database;
     try {
-      // Use insert with conflictAlgorithm.replace to ensure toggling/updating
-      // attendance for the same student and date never fails due to UNIQUE constraint.
       final now = DateTime.now().millisecondsSinceEpoch;
       final map = {
         ...attendance.toMap(),
@@ -434,7 +439,6 @@ class DatabaseHelper {
     return result.map((map) => models.Attendance.fromMap(map)).toList();
   }
 
-  // NEW: Get attendance for multiple batches
   Future<List<models.Attendance>> getAttendanceByBatchesAndDate(
     List<int> batchIds,
     String date,
@@ -585,7 +589,6 @@ class DatabaseHelper {
   Future<Map<String, dynamic>> insertFollowUp(models.FollowUp followUp) async {
     final db = await database;
     try {
-      // Verify attendance exists
       final attResult = await db.query(
         'attendance',
         where: 'id = ?',
@@ -595,8 +598,6 @@ class DatabaseHelper {
       if (attResult.isEmpty) {
         return {'success': false, 'message': 'Attendance record not found'};
       }
-
-      // REMOVED: Same-day restriction - batch teachers can now follow up anytime
       
       final id = await db.insert('follow_ups', followUp.toMap());
       return {'success': true, 'id': id, 'message': 'Follow-up recorded'};

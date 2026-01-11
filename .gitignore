@@ -48,6 +48,8 @@ build/
 .packages
 .pub/
 android/.gradle/
+
+
 android/app/build/
 ios/Pods/
 ios/.symlinks/
